@@ -12,20 +12,31 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 
+import environ
+from django.core.exceptions import ImproperlyConfigured
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
-
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-8k*qrakyyab#ebg45nt=7+0+^m%yf%wx#+sln5p_+a0y+2wi(n'
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = []
+# Process environment takes precedence over the optional, ignored local file.
+env = environ.Env()
+env.read_env(BASE_DIR / '.env', overwrite=False)
+SECRET_KEY = env('DJANGO_SECRET_KEY')
+if not SECRET_KEY.strip() or SECRET_KEY == 'replace-with-a-generated-local-secret':
+    raise ImproperlyConfigured('Set DJANGO_SECRET_KEY to a generated secret in the environment or backend/.env.')
+DEBUG = env.bool('DJANGO_DEBUG', default=False)
+ALLOWED_HOSTS = env.list('DJANGO_ALLOWED_HOSTS', default=[])
+FRONTEND_URL = env('FRONTEND_URL', default='').rstrip('/')
+CORS_ALLOWED_ORIGINS = [FRONTEND_URL] if FRONTEND_URL else []
+if DEBUG:
+    CORS_ALLOWED_ORIGINS = list(dict.fromkeys([
+        *CORS_ALLOWED_ORIGINS,
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+    ]))
+CORS_ALLOW_ALL_ORIGINS = False
+CORS_URLS_REGEX = r'^/api/.*$'
 
 
 # Application definition
@@ -33,6 +44,8 @@ ALLOWED_HOSTS = []
 AUTH_USER_MODEL = 'users.User'
 
 INSTALLED_APPS = [
+    'rest_framework',
+    'corsheaders',
     'users.apps.UsersConfig',
     'django.contrib.admin',
     'django.contrib.auth',
@@ -43,6 +56,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
