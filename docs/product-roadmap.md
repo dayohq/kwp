@@ -246,7 +246,7 @@ Password reset and Google account recovery should rely on standard proven flows 
 
 | Area | MVP requirement |
 | --- | --- |
-| Authentication | Use Django’s proven password handling; Google OAuth through a maintained package/provider flow; verified email; password reset; secure session/token handling. |
+| Authentication | Use Django’s proven password handling; Google OAuth through a maintained package/provider flow; verified email; password reset; Django server-side sessions with HttpOnly cookies (ADR 0004). Email verification/reset remain deferred from staged Packet 5. |
 | Authorization | All account, category, transaction, attachment and report queries are user-scoped and tested for cross-user access failures. |
 | Secrets | No secrets in Git. Separate local/staging/production environment variables. Rotate any exposed credentials. |
 | Transport | HTTPS-only in production; secure cookie settings and CSRF/CORS rules matched to deployed origins. |

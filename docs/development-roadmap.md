@@ -129,7 +129,7 @@ Build explicit Loading / Empty / Error / Success states for every data view.
 | Control | Implementation requirement |
 | --- | --- |
 | Password/OAuth | Use maintained Django authentication components and Google OAuth; never store raw passwords or implement custom crypto. |
-| Session/token storage | Prefer secure HttpOnly/Secure/SameSite cookie-based session/refresh handling appropriate to the final deployment topology; avoid long-lived bearer tokens in localStorage. |
+| Session storage | Django server-side sessions with HttpOnly/SameSite cookies; Secure over production HTTPS. No JWT/DRF tokens or auth state in localStorage/sessionStorage; see ADR 0004. |
 | CSRF / CORS | Explicit allowed frontend origins; CSRF protection for cookie-authenticated writes; no wildcard production origins. |
 | Authorization | Every queryset/API object is filtered by request.user; tests attempt cross-user object IDs. |
 | Secrets | SECRET_KEY, OAuth secrets, DB credentials and storage credentials live in environment/secret manager only. |

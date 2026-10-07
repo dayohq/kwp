@@ -182,3 +182,24 @@
     border-right-color: var(--border);
   }
 }
+
+#center section {
+  width: min(100%, 420px);
+}
+
+#center form {
+  display: grid;
+  gap: 14px;
+  margin-top: 20px;
+  text-align: left;
+}
+
+#center label {
+  display: grid;
+  gap: 4px;
+}
+
+#center input, #center button {
+  font: inherit;
+  padding: 10px;
+}

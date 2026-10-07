@@ -98,3 +98,17 @@ class EnvironmentSettingsTests(SimpleTestCase):
         with patch.dict(os.environ, {'DJANGO_SECRET_KEY': secrets.token_urlsafe(64)}, clear=True), \
                 patch('environ.Env.read_env'), self.assertRaisesMessage(ImproperlyConfigured, 'DATABASE_URL'):
             runpy.run_path(str(Path(__file__).with_name('settings.py')))
+
+    def test_session_security_configuration(self):
+        for debug in ('True', 'False'):
+            config = self.load_settings({'DJANGO_SECRET_KEY': secrets.token_urlsafe(64),
+                                        'DJANGO_DEBUG': debug, 'FRONTEND_URL': 'https://frontend.example'})
+            self.assertTrue(config['SESSION_COOKIE_HTTPONLY'])
+            self.assertTrue(config['CSRF_COOKIE_HTTPONLY'])
+            self.assertTrue(config['CORS_ALLOW_CREDENTIALS'])
+            self.assertFalse(config['CORS_ALLOW_ALL_ORIGINS'])
+            self.assertEqual(config['CSRF_TRUSTED_ORIGINS'], config['CORS_ALLOWED_ORIGINS'])
+            self.assertEqual(config['SESSION_COOKIE_SECURE'], debug == 'False')
+            self.assertEqual(config['CSRF_COOKIE_SECURE'], debug == 'False')
+            self.assertEqual(config['REST_FRAMEWORK']['DEFAULT_AUTHENTICATION_CLASSES'],
+                             ['rest_framework.authentication.SessionAuthentication'])

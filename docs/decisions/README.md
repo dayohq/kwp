@@ -7,7 +7,7 @@ These records capture the supplied roadmaps’ planning decisions. Accepted base
 | [0001: MVP stack and project boundary](0001-mvp-stack.md) | Accepted planning baseline |
 | [0002: Ledger source of truth and transaction corrections](0002-ledger-and-corrections.md) | Accepted planning baseline |
 | [0003: Single base currency and owner-scoped records](0003-base-currency-and-ownership.md) | Accepted planning baseline |
-| [0004: Authentication components and transport](0004-authentication-transport.md) | Proposed transport; accepted security constraints |
+| [0004: Authentication components and transport](0004-authentication-transport.md) | Accepted session transport; staged authentication implementation |
 | [0005: Managed hosting and private attachments](0005-hosting-and-private-attachments.md) | Proposed providers; accepted storage constraints |
 | [0006: Environment configuration and API connectivity](0006-environment-and-connectivity.md) | Accepted for Packet 3 |
 

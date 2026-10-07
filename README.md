@@ -1,6 +1,6 @@
 # KWP
 
-Packets 3–4 provide environment configuration, PostgreSQL development storage and a development connectivity check. Authentication and financial features are not implemented here.
+Packets 3–5 provide environment configuration, PostgreSQL development storage, health connectivity and staged email/password session authentication. Financial features are not implemented. Email verification is deliberately deferred; this is not the final production signup flow.
 
 ## Local setup
 
@@ -64,7 +64,7 @@ Expected vendor: `postgresql`. If you need a development admin, run `python mana
 
 `backend/db.sqlite3` remains ignored and can stay on disk; it is no longer the active development database. Existing disposable SQLite users/admin data are not copied. Django's existing migration files are the canonical schema history. No migration deletion or custom data-transfer script is required.
 
-Create `frontend/.env` from `frontend/.env.example` if it does not exist. It sets `VITE_API_BASE_URL=http://127.0.0.1:8000/api`. The base URL includes `/api` but not `/health/`; a trailing slash is accepted. Vite embeds `VITE_*` values in browser code: never put secrets there. Restart Vite after environment changes.
+Create `frontend/.env` from `frontend/.env.example` if it does not exist. It sets `VITE_API_BASE_URL=http://localhost:8000/api`. The base URL includes `/api` but not `/health/`; a trailing slash is accepted. Vite embeds `VITE_*` values in browser code: never put secrets there. Restart Vite after environment changes.
 
 Terminal 1, from the repository root:
 
@@ -82,17 +82,17 @@ npm ci
 npm run dev -- --port 5173 --strictPort
 ```
 
-Open `http://localhost:5173` (or `http://127.0.0.1:5173`). Expect `API status: Checking...` followed by `API status: Connected`. Stop Django and reload the page to verify `API status: Unavailable` without a crash. There is no automatic retry; reload after restarting Django.
+Open `http://localhost:5173`. Expect `API status: Checking...` followed by `API status: Connected`. Stop Django and reload the page to verify `API status: Unavailable` without a crash. There is no automatic retry; reload after restarting Django.
 
 Direct backend check:
 
 ```sh
-curl http://127.0.0.1:8000/api/health/
+curl http://localhost:8000/api/health/
 ```
 
 Expected HTTP 200 body: `{"status":"ok"}`. This public endpoint checks liveness/connectivity only; it performs no database access, exposes no configuration and does not establish database readiness.
 
-When `DJANGO_DEBUG=True`, both frontend loopback origins on port 5173 are explicitly permitted alongside `FRONTEND_URL`. Other ports/origins are rejected unless explicitly configured. With debug off, only the configured `FRONTEND_URL` is permitted; there are no automatic development origins. CORS applies to `/api/` only and is not globally open. CORS is not authentication or CSRF protection; the future authentication packet must establish those separately.
+When `DJANGO_DEBUG=True`, both frontend loopback origins on port 5173 are explicitly permitted alongside `FRONTEND_URL`. Other ports/origins are rejected unless explicitly configured. With debug off, only the configured `FRONTEND_URL` is permitted; there are no automatic development origins. CORS applies to `/api/` only and is not globally open. Packet 5 permits credentialed CORS only for these explicit origins and trusts the same origins for CSRF. CSRF remains enforced separately.
 
 ## Validation
 
@@ -112,4 +112,50 @@ npm run lint
 npm run build
 ```
 
-See [ADR 0006](docs/decisions/0006-environment-and-connectivity.md) for the configuration boundary. Production domains, HTTPS/cookie hardening and final auth transport remain later work. The old source-embedded development key is removed; it must not be reused, and any deployment that used it needs rotation before release. Git history is not rewritten by this packet.
+With the localhost Django and Vite servers running, `npm run test:e2e` runs the real auth UI in isolated headless Chrome. Set `CHROME_BIN` if Chrome is not at its standard macOS path or `google-chrome` on Linux. It verifies registration, login, reload, safe profiles, HttpOnly sessions, empty browser storage, logout, generic failures, duplicate email, CSRF rejection, unavailable-backend UI and recovery. It creates one disposable test account and reports its email so it can be removed using Django admin; no auth secrets are reported.
+
+See [ADR 0006](docs/decisions/0006-environment-and-connectivity.md) for the configuration boundary. Production domains and HTTPS/cookie hardening remain later work; ADR 0004 selects Django sessions. The old source-embedded development key is removed; it must not be reused, and any deployment that used it needs rotation before release. Git history is not rewritten by this packet.
+
+## Packet 5 authentication
+
+[Django server-side session architecture](docs/decisions/0004-authentication-transport.md) is selected. No JWT or DRF tokens are used. The browser manages the HttpOnly, host-only, SameSite=Lax session cookie. No session identifiers, auth tokens or passwords are persisted in localStorage/sessionStorage. Cookies use Secure when DEBUG=False; local DEBUG=True permits HTTP. A production same-site HTTPS topology and security review remain required.
+
+Use **localhost for both services**: frontend http://localhost:5173, backend http://localhost:8000, VITE_API_BASE_URL=http://localhost:8000/api. Existing frontend/.env files using 127.0.0.1 must update their public API URL and restart Vite. Do not mix these hostnames for auth. The PostgreSQL host in DATABASE_URL is independent and does not need changing.
+
+| Method/path | Input / response |
+| --- | --- |
+| GET /api/auth/csrf/ | Returns a masked csrfToken and sets an HttpOnly CSRF cookie; no session identifier is returned |
+| POST /api/auth/register/ | email, password, password_confirmation, explicit base_currency; optional timezone. HTTP 201 safe profile; does not sign in |
+| POST /api/auth/login/ | email and password. HTTP 200 safe profile and Django session cookie |
+| GET /api/auth/me/ | HTTP 200 current user's id, email, base_currency, timezone; anonymous requests get HTTP 403 |
+| POST /api/auth/logout/ | Empty JSON object. HTTP 200 detail; deletes the server session and expires the browser session cookie; requires authentication |
+
+All frontend auth fetches use credentials: 'include'. Before each POST, fetch /api/auth/csrf/ and send its csrfToken as X-CSRFToken with JSON Content-Type. This includes anonymous registration/login. Bootstrap again after login because Django rotates CSRF state. The helper keeps each token only in request memory. Bad/missing CSRF or untrusted origins return HTTP 403, possibly Django's HTML CSRF error page. API validation returns HTTP 400 JSON field errors. Incorrect passwords, nonexistent accounts and inactive users get the same invalid-credentials message. Session-protected anonymous HTTP 403 is distinct from network failure/HTTP 5xx in the frontend. Auth responses are marked no-store.
+
+Registration normalizes email using the existing User manager and enforces case-insensitive uniqueness, including competing registrations. It runs Django's configured password validators and hashes through create_user. Currency requires three uppercase letters with no default (this model checks format, not ISO membership); timezone defaults to Africa/Lagos. No schema changes, finance setup or full onboarding are introduced. Registration requires password confirmation. The UI clears submitted passwords after every outcome.
+
+### Manual end-to-end verification
+
+1. Start PostgreSQL. From backend/, run ../kwp_env/bin/python manage.py migrate then ../kwp_env/bin/python manage.py runserver localhost:8000.
+2. From frontend/, confirm the public localhost API URL in the ignored .env and run npm run dev -- --host localhost --port 5173 --strictPort. Open http://localhost:5173.
+3. Confirm API status: Connected and Signed out. Choose Create an account. Register a unique test-only email, an explicit currency such as USD, and a strong test-only password/confirmation. Expect Registration successful and the login form.
+4. Confirm storage without printing a password/hash: from backend/, run ../kwp_env/bin/python manage.py shell, then enter:
+
+   ```python
+   from django.contrib.auth import get_user_model
+   from django.contrib.auth.hashers import identify_hasher
+   user = get_user_model().objects.get(email="your-test-email@example.com")
+   print(user.email, user.base_currency, user.timezone)
+   print(identify_hasher(user.password).algorithm)
+   ```
+
+   A recognized Django hashing algorithm proves the stored value is encoded. Existing admin users can also inspect the user at http://localhost:8000/admin/; create a local admin with manage.py createsuperuser and explicitly choose base currency if needed.
+5. Login with the registered email/password. Expect Signed in as the normalized email. Reload: the authenticated session remains. Browser DevTools Network should show GET /api/auth/me/ returning HTTP 200 and only id/email/base_currency/timezone. Do not copy cookies or tokens into reports.
+6. Click Logout. Expect Signed out. Reload: /me/ returns HTTP 403. The previous server session is invalidated.
+7. Try an incorrect password and then an unknown email: both give Invalid email or password. Try registration with the registered email in different casing: controlled duplicate-email validation.
+8. Omit base currency or use a weak password: registration fails. POST login/logout without a valid CSRF token is rejected. Auth POSTs never use GET.
+9. Confirm http://localhost:8000/api/health/ still returns {"status":"ok"}. Stop Django and reload the frontend: API unavailable is shown rather than Signed out. Restart Django and reload to recover.
+
+### Deferred authentication work
+
+Verified email remains a final signup requirement, but this development-stage packet permits unverified password users to authenticate. A dedicated later auth packet must implement verification emails/tokens, resend, enforcement, password reset and production email configuration. Google OAuth, rate limiting/abuse prevention and final production security/deployment hardening remain deferred. No production-readiness or brute-force protection is claimed; no Redis or misleading in-memory throttle is introduced. Packet 6 is not part of this change.
