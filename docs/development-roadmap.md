@@ -145,7 +145,7 @@ Build explicit Loading / Empty / Error / Success states for every data view.
 
 | Environment | Purpose |
 | --- | --- |
-| Local | Development and fast tests; local Postgres preferred so database behaviour matches production. |
+| Local | Development and tests use PostgreSQL, configured through required `DATABASE_URL`; no SQLite fallback. See ADR 0001 and README setup instructions. |
 | Preview / Staging | Deploy before production when feasible; separate database and OAuth URLs; used for smoke/E2E testing. |
 | Production | Managed PostgreSQL, HTTPS, private media storage, monitoring and backup enabled. |
 

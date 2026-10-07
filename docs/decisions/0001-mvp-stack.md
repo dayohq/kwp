@@ -17,3 +17,9 @@ Use a clean React 19 + Vite JavaScript frontend, Django 5.2 LTS on a supported s
 ## Consequences and follow-up
 
 Keep financial rules in Django and use frontend feature folders with a small fetch wrapper and React Router. Avoid Redux unless complexity warrants it. The baseline is from the supplied roadmap, not a statement that versions or implementation have been verified.
+
+## Packet 4 — PostgreSQL development database
+
+PostgreSQL is now required for normal development as well as the production target. Parse required `DATABASE_URL` with the existing django-environ dependency and use psycopg 3 (`psycopg[binary]`). Missing or non-PostgreSQL configuration fails clearly; there is no SQLite fallback. Reuse all existing migrations against a fresh local PostgreSQL database; retain the inactive ignored SQLite file and do not copy disposable data.
+
+The local app role owns its development database and is not a superuser. Grant local `CREATEDB` for Django's temporary PostgreSQL test databases. See [setup and verification](../../README.md#postgresql-development-setup). Production role separation and hosting remain future work.

@@ -1,6 +1,6 @@
 # KWP
 
-Packet 3 provides local environment configuration and a development connectivity check. Authentication and financial features are not implemented here.
+Packets 3–4 provide environment configuration, PostgreSQL development storage and a development connectivity check. Authentication and financial features are not implemented here.
 
 ## Local setup
 
@@ -26,8 +26,43 @@ Backend variables:
 | `DJANGO_DEBUG` | `True` locally; defaults to `False` when absent |
 | `DJANGO_ALLOWED_HOSTS` | `localhost,127.0.0.1`; defaults to an empty list |
 | `FRONTEND_URL` | `http://localhost:5173`; origin only, no path |
+| `DATABASE_URL` | Required PostgreSQL URL; use local credentials in ignored `backend/.env` only |
 
-`django-environ` reads `backend/.env`; process environment values take precedence. Keep one settings file. SQLite remains the local database. Existing migrations can be applied with `python manage.py migrate` after activation; this packet adds no migrations.
+`django-environ` reads `backend/.env`; process environment values take precedence. Keep one settings file. PostgreSQL is the standard local database, with no SQLite fallback. Missing/invalid database configuration fails clearly. See the database setup below before starting Django. This packet reuses existing migrations without creating or rewriting schema history.
+
+### PostgreSQL development setup
+
+Install and run PostgreSQL 17 (Django 5.2 supports PostgreSQL 14+). Use your existing installation, or on macOS use `brew install postgresql@17` and `brew services start postgresql@17`. Ensure its `bin` directory is on your PATH. The app does not depend on Homebrew. [Django compatibility reference](https://docs.djangoproject.com/en/5.2/ref/databases/#postgresql-notes).
+
+Connect as your local PostgreSQL administrator, not the app role. Replace `postgres` below if your installation uses another administrator name:
+
+```sh
+psql -h 127.0.0.1 -U postgres -d postgres
+```
+
+In psql, create a non-superuser development role and database owned by it:
+
+```sql
+CREATE ROLE kwp_user LOGIN NOSUPERUSER NOCREATEROLE CREATEDB;
+\password kwp_user
+CREATE DATABASE kwp_db OWNER kwp_user;
+```
+
+`\password` prompts for a password without putting it in SQL history. Database ownership permits migrations to create/alter tables, including in the `public` schema on PostgreSQL 17; no extra blanket grants or superuser status are needed. Local `CREATEDB` permits Django to create and destroy its temporary `test_kwp_db` database. This development permission is not a production role design. [PostgreSQL ownership documentation](https://www.postgresql.org/docs/17/sql-createdatabase.html).
+
+Add a `DATABASE_URL` entry to `backend/.env` using your database name, user, password, host and port. The placeholder-only format is in `backend/.env.example`. URL-encode special characters in the password; never paste the complete URL into logs, committed files or bug reports. Preserve your existing secret and other environment values.
+
+Apply the existing schema and verify an actual connection from `backend/`:
+
+```sh
+source ../kwp_env/bin/activate
+python manage.py migrate
+python manage.py shell -c "from django.db import connection; connection.ensure_connection(); print(connection.vendor)"
+```
+
+Expected vendor: `postgresql`. If you need a development admin, run `python manage.py createsuperuser` and explicitly select base currency. There is no default admin account.
+
+`backend/db.sqlite3` remains ignored and can stay on disk; it is no longer the active development database. Existing disposable SQLite users/admin data are not copied. Django's existing migration files are the canonical schema history. No migration deletion or custom data-transfer script is required.
 
 Create `frontend/.env` from `frontend/.env.example` if it does not exist. It sets `VITE_API_BASE_URL=http://127.0.0.1:8000/api`. The base URL includes `/api` but not `/health/`; a trailing slash is accepted. Vite embeds `VITE_*` values in browser code: never put secrets there. Restart Vite after environment changes.
 
@@ -61,7 +96,7 @@ When `DJANGO_DEBUG=True`, both frontend loopback origins on port 5173 are explic
 
 ## Validation
 
-From `backend/` with local environment configuration:
+From `backend/` with PostgreSQL running and local environment configuration (tests use PostgreSQL, create `test_kwp_db`, then destroy it):
 
 ```sh
 ../kwp_env/bin/python manage.py test

@@ -22,7 +22,7 @@ Use local time for user-facing dates and consistent backend timestamps. Permit b
 
 Store `base_currency` and `timezone` directly on `users.User`, as requested for this iteration, rather than creating the roadmap's separate profile model. Base currency has no default and is required by model validation, user creation and admin forms. `REQUIRED_FIELDS` includes `base_currency` so `createsuperuser` prompts for it. Time zone retains the `Africa/Lagos` default. Both preferences remain editable. Currency validation checks three uppercase letters only, not membership in a supported currency list. Time zones are validated using Python's IANA zone database. Email is the login identity, normalized to lowercase, with field uniqueness and a case-insensitive database uniqueness constraint.
 
-The existing local SQLite configuration is retained for this scoped iteration; PostgreSQL remains the agreed target. Display preferences and onboarding state remain planned; they are not implemented here.
+The custom User iteration initially retained SQLite. Packet 4 now requires PostgreSQL for development (see ADR 0001), without changing these currency or ownership rules. Display preferences and onboarding state remain planned; they are not implemented here.
 
 ## Corrective iteration after Packet 2
 

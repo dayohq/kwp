@@ -89,12 +89,18 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
-}
+try:
+    database_url = env('DATABASE_URL')
+    if not database_url.startswith(('postgres://', 'postgresql://', 'psql://')):
+        raise ImproperlyConfigured('DATABASE_URL must use a PostgreSQL URL scheme.')
+    DATABASES = {'default': env.db_url_config(database_url)}
+except (ImproperlyConfigured, ValueError):
+    raise ImproperlyConfigured('Set DATABASE_URL to a valid PostgreSQL connection URL.') from None
+if DATABASES['default'].get('ENGINE') != 'django.db.backends.postgresql':
+    raise ImproperlyConfigured('DATABASE_URL must configure PostgreSQL; SQLite fallback is not supported.')
+if not DATABASES['default'].get('NAME'):
+    raise ImproperlyConfigured('DATABASE_URL must include a PostgreSQL database name.')
+
 
 
 # Password validation

@@ -20,6 +20,6 @@ Local frontend URL is `http://localhost:5173`; backend URL is `http://127.0.0.1:
 
 ## Consequences and follow-up
 
-Local env files remain ignored; example files contain placeholders only. Runtime dependencies are pinned in `backend/requirements.txt`; no transitive freeze or frontend dependency is added. Production must supply its own secret, origins/hosts and security settings. ADR 0004 still governs the pending auth transport decision; no credentialed cross-origin requests or CSRF origin policy are implemented here. SQLite remains unchanged.
+Local env files remain ignored; example files contain placeholders only. Runtime dependencies are pinned in `backend/requirements.txt`; no transitive freeze or frontend dependency is added. Production must supply its own secret, origins/hosts and security settings. ADR 0004 still governs the pending auth transport decision; no credentialed cross-origin requests or CSRF origin policy are implemented here. Packet 4 supersedes the initial SQLite configuration: required `DATABASE_URL` configures PostgreSQL with no fallback; see ADR 0001. Health semantics remain unchanged.
 
 See [local setup and validation](../../README.md) for exact commands and environment-file preparation. The endpoint and minimal UI can evolve later without adding business features to this packet.

@@ -41,6 +41,7 @@ class HealthTests(SimpleTestCase):
 
 class EnvironmentSettingsTests(SimpleTestCase):
     def load_settings(self, values):
+        values = {'DATABASE_URL': 'postgresql://example_user@127.0.0.1:5432/example_db'} | values
         with patch.dict(os.environ, values, clear=True), patch('environ.Env.read_env'):
             return runpy.run_path(str(Path(__file__).with_name('settings.py')))
 
@@ -76,3 +77,24 @@ class EnvironmentSettingsTests(SimpleTestCase):
         config = self.load_settings({'DJANGO_SECRET_KEY': secrets.token_urlsafe(64)})
         self.assertFalse(config['DEBUG'])
         self.assertEqual(config['CORS_ALLOWED_ORIGINS'], [])
+
+    def test_database_url_drives_postgresql_configuration(self):
+        config = self.load_settings({
+            'DJANGO_SECRET_KEY': secrets.token_urlsafe(64),
+            'DATABASE_URL': 'postgresql://example_user@localhost:5433/example_db',
+        })['DATABASES']['default']
+        self.assertEqual(config['ENGINE'], 'django.db.backends.postgresql')
+        self.assertEqual(config['NAME'], 'example_db')
+        self.assertEqual(config['USER'], 'example_user')
+        self.assertEqual(config['HOST'], 'localhost')
+        self.assertEqual(str(config['PORT']), '5433')
+
+    def test_database_configuration_never_falls_back_to_sqlite(self):
+        for url in ('', 'sqlite:///db.sqlite3', 'postgresql://localhost/', 'invalid'):
+            with self.subTest(url=url), self.assertRaises(ImproperlyConfigured):
+                self.load_settings({'DJANGO_SECRET_KEY': secrets.token_urlsafe(64), 'DATABASE_URL': url})
+
+    def test_missing_database_url_fails_clearly(self):
+        with patch.dict(os.environ, {'DJANGO_SECRET_KEY': secrets.token_urlsafe(64)}, clear=True), \
+                patch('environ.Env.read_env'), self.assertRaisesMessage(ImproperlyConfigured, 'DATABASE_URL'):
+            runpy.run_path(str(Path(__file__).with_name('settings.py')))
