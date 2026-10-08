@@ -1,6 +1,6 @@
 # KWP
 
-Packets 3–5 provide environment configuration, PostgreSQL development storage, health connectivity and staged email/password session authentication. Financial features are not implemented. Email verification is deliberately deferred; this is not the final production signup flow.
+Packets 3–6 provide environment configuration, PostgreSQL development storage, health connectivity, staged email/password sessions and the finance-domain schema. Finance posting, APIs and UI are not implemented. Email verification is deliberately deferred; this is not the final production signup flow.
 
 ## Local setup
 
@@ -28,7 +28,7 @@ Backend variables:
 | `FRONTEND_URL` | `http://localhost:5173`; origin only, no path |
 | `DATABASE_URL` | Required PostgreSQL URL; use local credentials in ignored `backend/.env` only |
 
-`django-environ` reads `backend/.env`; process environment values take precedence. Keep one settings file. PostgreSQL is the standard local database, with no SQLite fallback. Missing/invalid database configuration fails clearly. See the database setup below before starting Django. This packet reuses existing migrations without creating or rewriting schema history.
+`django-environ` reads `backend/.env`; process environment values take precedence. Keep one settings file. PostgreSQL is the standard local database, with no SQLite fallback. Missing/invalid database configuration fails clearly. See the database setup below before starting Django. Packet 4 reused existing migrations without rewriting schema history; Packet 6 adds the initial finance schema migration.
 
 ### PostgreSQL development setup
 
@@ -159,3 +159,26 @@ Registration normalizes email using the existing User manager and enforces case-
 ### Deferred authentication work
 
 Verified email remains a final signup requirement, but this development-stage packet permits unverified password users to authenticate. A dedicated later auth packet must implement verification emails/tokens, resend, enforcement, password reset and production email configuration. Google OAuth, rate limiting/abuse prevention and final production security/deployment hardening remain deferred. No production-readiness or brute-force protection is claimed; no Redis or misleading in-memory throttle is introduced. Packet 6 is not part of this change.
+
+## Packet 6 finance schema
+
+The finance app contains FinancialAccount, Category, LedgerAccount, Transaction, JournalEntry and JournalLine. See [ADR 0007](docs/decisions/0007-finance-domain-schema.md) for fields, links, Decimal precision, ownership enforcement, deletion/archiving and draft-only lifecycle decisions.
+
+After pulling this schema change, apply the new migration from backend/:
+
+```sh
+../kwp_env/bin/python manage.py migrate
+../kwp_env/bin/python manage.py test
+../kwp_env/bin/python manage.py check
+../kwp_env/bin/python manage.py makemigrations --check --dry-run
+```
+
+Django admin can inspect all six models; transactions, journals and lines are read-only there. Accounts/categories may be archived with is_active=False while retaining their historical references. All finance foreign keys protect referenced records from casual deletion. Normal model saves validate cross-user links; raw SQL and bulk/queryset writes bypass application rules and are not supported creation/update paths without equivalent validation.
+
+Money uses Decimal(24,6); no balances or bank numbers are stored. Journal lines have one positive debit or credit, with the other side NULL. PostgreSQL enforces local money/shape constraints, while ownership/type/hierarchy checks across rows are application validated. Every eventual posted journal must balance total debits == total credits. Packet 6 has only drafts and does not implement the posting or balancing engine. Packet 7 starter templates and Packet 8 posting services remain unimplemented. Authentication and the frontend are unchanged.
+
+## Packet 6B design clarifications
+
+[ADR 0007](docs/decisions/0007-finance-domain-schema.md) clarifies account/ledger separation, two-level category grouping and future conditional transaction fields. [ADR 0008](docs/decisions/0008-opening-balances-and-reconciliation.md) defines visible opening-balance and balance-adjustment Transactions linked to journals, with equity counter-accounts and separate reporting treatment. Their special model kinds are draft-only and are not ordinary Add Transaction choices. Apply the forward Packet 6B migration with the existing migrate command; no data is seeded.
+
+Balances remain ledger-derived. Posting, balancing, reconciliation, reports, finance APIs/UI and starter templates are still unimplemented. The [identifier security backlog](docs/security-backlog.md) records optional future encrypted account identifiers; last_four is unchanged and no full identifier is stored.

@@ -16,7 +16,7 @@ Use one owner per profile and one base currency across all MVP accounts. Choose 
 
 ## Consequences and follow-up
 
-Use local time for user-facing dates and consistent backend timestamps. Permit back-dated records but no future/scheduled posting. Activate or rename starter account templates instead of creating all accounts automatically. Collect optional last four digits only. Archive accounts and categories with history; category identifiers remain stable across renames. Shared accounts and multi-currency accounting remain post-MVP.
+Use local time for user-facing dates and consistent backend timestamps. Permit back-dated records but no future/scheduled posting. Activate or rename starter account templates instead of creating all accounts automatically. The current schema collects optional last four digits only. Optional future full identifiers require the encrypted-storage/key-management design in [the security backlog](../security-backlog.md); they are not needed for accounting correctness. Archive accounts and categories with history; category identifiers remain stable across renames. Shared accounts and multi-currency accounting remain post-MVP.
 
 ## Custom User iteration — 2 October 2026
 
@@ -26,7 +26,7 @@ The custom User iteration initially retained SQLite. Packet 4 now requires Postg
 
 ## Corrective iteration after Packet 2
 
-The explicit selection and designation-only change rules above supersede the supplied DOCX currency policy. Removing the model default does not rewrite existing users’ stored currencies; selection provenance for existing records is unknown. No financial models or currency settings UI exist yet, so numeric preservation across financial activity must be verified when those features are implemented.
+The explicit selection and designation-only change rules above supersede the supplied DOCX currency policy. Removing the model default does not rewrite existing users’ stored currencies; selection provenance for existing records is unknown. Packet 6 now adds draft finance models (see ADR 0007). Currency settings UI and posted financial activity remain later work, so numeric preservation across financial postings must be verified when those features are implemented.
 
 ### Currency-change confirmation (later settings frontend)
 

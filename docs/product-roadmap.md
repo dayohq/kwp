@@ -112,7 +112,7 @@ Starter accounts should be templates that users activate or rename, not 15 accou
 
 Display name; kind (Bank, Wallet, Cash, Other); optional institution name; optional subtype; optional last four digits only; opening balance; active/archived state; include-in-total flag; display order.
 
-Do not collect full bank account numbers in the MVP because there is no bank integration that requires them.
+The current schema collects no full account identifiers. An optional future encrypted identifier may support different country/scheme formats, including alphanumeric values, only after encryption/key-management design; see [the security backlog](security-backlog.md). Masking is not encryption, and full identifiers are not required for accounting correctness.
 
 Accounts with transaction history are archived rather than hard-deleted.
 
@@ -148,7 +148,7 @@ A later version can rank suggestions from transaction history, merchants, locati
 
 ## 6. Accounting and transaction logic
 
-KWP should expose three user transaction types while maintaining a hidden double-entry ledger. Journal entries are the accounting source of truth; dashboard and report logic must respect the posting rules below.
+KWP should expose three ordinary Add Transaction types while maintaining a hidden double-entry ledger. Dedicated initialization/reconciliation workflows use special opening_balance/adjustment kinds with visible Transaction + JournalEntry records; see [ADR 0008](decisions/0008-opening-balances-and-reconciliation.md). Journal entries are the accounting source of truth; dashboard and report logic must respect the posting rules below.
 
 | User action | Debit | Credit | Reporting effect |
 | --- | --- | --- | --- |

@@ -10,5 +10,7 @@ These records capture the supplied roadmaps’ planning decisions. Accepted base
 | [0004: Authentication components and transport](0004-authentication-transport.md) | Accepted session transport; staged authentication implementation |
 | [0005: Managed hosting and private attachments](0005-hosting-and-private-attachments.md) | Proposed providers; accepted storage constraints |
 | [0006: Environment configuration and API connectivity](0006-environment-and-connectivity.md) | Accepted for Packet 3 |
+| [0007: Finance domain and ledger schema](0007-finance-domain-schema.md) | Accepted for Packet 6; clarified by Packet 6B |
+| [0008: Visible opening balances and reconciliation adjustments](0008-opening-balances-and-reconciliation.md) | Accepted for Packet 6B; implementation deferred |
 
 Other open product discussions remain in [Product roadmap §15](../product-roadmap.md#15-open-design-discussions-to-resolve-during-the-build): report terminology/layout, category depth, date/time control placement, and the Day 47 PDF/attachments scope review. The immutable reversal option is tracked in ADR 0002; hosting and domain timing in ADR 0005.

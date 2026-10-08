@@ -67,6 +67,14 @@ Currency rule: changing base currency updates only the user’s designation, wit
 
 Balance rule: the ledger is the source of truth. FinancialAccount.current_balance may be cached later for performance, but the MVP can derive balances from journal lines until profiling proves a need for caching.
 
+### Packet 6 structural implementation
+
+The six core finance models are now implemented in the finance app. [ADR 0007](decisions/0007-finance-domain-schema.md) records the exact schema and enforcement boundaries. Optional companion/account/category links support independent draft creation, all monetary fields use Decimal(24,6), journals are one-to-one with ordinary transactions, and all finance references use PROTECT. Draft-only states prevent records from claiming a validated posting. Cross-table ownership/hierarchy/type rules are validated on normal saves; local scalar/shape rules have PostgreSQL constraints. No templates, posting/balancing engine, finance API, balances or frontend finance UI is implemented in this packet. The broader model table above remains the eventual target; opening-balance posting links, seed provenance and posted/audit lifecycle behavior are later work.
+
+### Packet 6B clarification
+
+Transaction.Kind also includes the special opening_balance and adjustment kinds for dedicated future workflows. Ordinary Add Transaction choices remain income/expense/transfer. Categories remain income/expense; special events and transfers have no category. [ADR 0008](decisions/0008-opening-balances-and-reconciliation.md) resolves opening/adjustment representation as visible Transactions linked to journals, using distinct equity counter-accounts and separate reporting treatment. No posting, reconciliation, reporting, frontend or provisioning implementation is introduced. Full identifiers remain future encrypted-storage design work in [the security backlog](security-backlog.md).
+
 ## 4. Posting service design
 
 Do not scatter debit/credit logic across serializers and React components. Create a backend finance service that receives validated user intent and posts the corresponding ledger entry inside a database transaction.
